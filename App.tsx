@@ -5,13 +5,23 @@ import { Employee, AnalysisType } from './types';
 import { runAIAnalysis } from './services/geminiService';
 import OrgCard from './components/OrgCard';
 import Modal from './components/Modal';
+import Login from './components/Login';
 
 const App: React.FC = () => {
+  const [user, setUser] = useState<any>(null);
   const [data] = useState<Employee[]>(INITIAL_DATA);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalTitle, setModalTitle] = useState('Consultor Estratégico');
   const [modalContent, setModalContent] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const handleLoginSuccess = (userData: any) => {
+    setUser(userData);
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+  };
 
   const handleGlobalAI = useCallback(async (type: AnalysisType | string) => {
     setModalTitle(`Análisis IA: ${type}`);
@@ -32,7 +42,6 @@ const App: React.FC = () => {
     
     const doc = new jsPDF('p', 'mm', 'a4');
     
-    // Page 1: Cover
     doc.setFontSize(26);
     doc.setTextColor(21, 101, 192);
     doc.text("TALENT OS v13.0", 20, 50);
@@ -44,10 +53,10 @@ const App: React.FC = () => {
     doc.line(20, 75, 190, 75);
     
     doc.setFontSize(10);
+    doc.text(`Consultor: ${user?.name || 'Usuario Autorizado'}`, 20, 265);
     doc.text("Generado el: " + new Date().toLocaleString(), 20, 270);
     doc.text("© 2024 ISIT-APP TALENT OS", 20, 275);
 
-    // Page 2: Chart Capture
     doc.addPage();
     doc.setFontSize(14);
     doc.text("ESTRUCTURA ORGANIZACIONAL", 20, 20);
@@ -62,7 +71,6 @@ const App: React.FC = () => {
       doc.addImage(img.toDataURL('image/png'), 'PNG', 5, 30, 200, 140);
     }
 
-    // Page 3: Dictionary
     doc.addPage();
     doc.setFontSize(14);
     doc.text("DICCIONARIO DE ROLES Y FUNCIONES", 20, 20);
@@ -77,8 +85,8 @@ const App: React.FC = () => {
       headStyles: { fillStyle: COLORS.primary }
     });
 
-    doc.save("Estrategia_Talento_v13.pdf");
-  }, [data]);
+    doc.save(`Estrategia_ESGRAP_${new Date().getTime()}.pdf`);
+  }, [data, user]);
 
   const connections = useMemo(() => {
     return data.filter(e => e.parentId).map(e => {
@@ -86,11 +94,10 @@ const App: React.FC = () => {
       if (!parent) return null;
       
       const x1 = parent.position.x;
-      const y1 = parent.position.y + 100; // bottom of card
+      const y1 = parent.position.y + 100;
       const x2 = e.position.x;
-      const y2 = e.position.y - 4; // top of card
+      const y2 = e.position.y - 4;
       
-      // Calculate mid point for orthogonal lines
       const midY = y1 + (y2 - y1) / 2;
 
       return (
@@ -105,10 +112,28 @@ const App: React.FC = () => {
     });
   }, [data]);
 
+  if (!user) {
+    return <Login onLoginSuccess={handleLoginSuccess} />;
+  }
+
   return (
     <div className="flex flex-col h-full w-full">
+      {/* User Status Bar */}
+      <div className="fixed top-2 right-6 z-[1100] flex items-center gap-3">
+         <div className="flex items-center gap-2 bg-white/80 backdrop-blur-sm px-3 py-1.5 rounded-full border border-gray-200 shadow-sm">
+            <img src={user.picture} alt="profile" className="w-6 h-6 rounded-full border border-blue-200" />
+            <span className="text-[10px] font-bold text-gray-600">{user.email}</span>
+            <button 
+              onClick={handleLogout}
+              className="text-[10px] bg-gray-100 hover:bg-gray-200 px-2 py-0.5 rounded-full font-bold text-gray-400 transition-colors"
+            >
+              SALIR
+            </button>
+         </div>
+      </div>
+
       {/* UI Controls */}
-      <div className="fixed top-8 left-1/2 -translate-x-1/2 flex items-center gap-3 z-[1000] bg-white/90 backdrop-blur-md px-6 py-4 rounded-full shadow-2xl border border-white/20">
+      <div className="fixed top-12 left-1/2 -translate-x-1/2 flex items-center gap-3 z-[1000] bg-white/90 backdrop-blur-md px-6 py-4 rounded-full shadow-2xl border border-white/20">
         <button 
           onClick={() => handleGlobalAI('Diagnostico')}
           className="flex items-center gap-2 px-5 py-2.5 bg-[#1976D2] text-white font-black text-sm rounded-full hover:scale-105 active:scale-95 transition-all shadow-lg"
@@ -133,12 +158,6 @@ const App: React.FC = () => {
         >
           🎯 <span className="hidden md:inline">Estrategia</span>
         </button>
-        <button 
-          onClick={() => handleGlobalAI('TownHall')}
-          className="flex items-center gap-2 px-5 py-2.5 bg-[#303F9F] text-white font-black text-sm rounded-full hover:scale-105 active:scale-95 transition-all shadow-lg"
-        >
-          📢 <span className="hidden md:inline">Town Hall</span>
-        </button>
         <div className="w-[1px] h-8 bg-gray-200 mx-2" />
         <button 
           onClick={exportPDF}
@@ -150,7 +169,7 @@ const App: React.FC = () => {
 
       {/* Main Viewport */}
       <div className="flex-1 overflow-auto bg-[#f4f6f8] relative">
-        <div id="canvas" className="absolute top-[160px] left-[50px] w-[3400px] h-[2200px] bg-white rounded-[40px] shadow-2xl border border-gray-100 overflow-hidden">
+        <div id="canvas" className="absolute top-[180px] left-[50px] w-[3400px] h-[2200px] bg-white rounded-[40px] shadow-2xl border border-gray-100 overflow-hidden">
           
           {/* Background Zones */}
           <div className="absolute top-[40px] left-[1300px] w-[600px] h-[250px] bg-gray-50 border-2 border-dashed border-gray-300 rounded-[30px] opacity-40 pointer-events-none" />
@@ -179,7 +198,6 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      {/* Analysis Modal */}
       <Modal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
@@ -188,7 +206,7 @@ const App: React.FC = () => {
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
             <div className="w-12 h-12 border-4 border-[#1565C0] border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-gray-500 font-bold animate-pulse">Sintonizando Redes Neuronales Estratégicas...</p>
+            <p className="text-gray-500 font-bold animate-pulse text-sm">Ejecutando algoritmos de capital humano...</p>
           </div>
         ) : (
           <div className="whitespace-pre-wrap font-sans text-lg">
@@ -197,9 +215,8 @@ const App: React.FC = () => {
         )}
       </Modal>
 
-      {/* Floating Badge */}
       <div className="fixed bottom-6 right-6 bg-white/80 backdrop-blur px-4 py-2 rounded-full border border-gray-200 shadow-md text-[10px] font-bold text-gray-400 z-[1000]">
-        TALENT OS v13.0 | GOLD STANDARD EDITION
+        TALENT OS v13.0 | <span className="text-blue-500">AUTORIZADO: {user.family_name}</span>
       </div>
     </div>
   );

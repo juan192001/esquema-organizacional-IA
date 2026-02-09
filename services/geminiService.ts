@@ -3,7 +3,8 @@ import { GoogleGenAI } from "@google/genai";
 import { Employee, AnalysisType } from "../types";
 
 export const runAIAnalysis = async (type: AnalysisType | string, orgData: Employee[]): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+  // Fix: Initializing GoogleGenAI using process.env.API_KEY directly as per guidelines
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const orgContext = orgData.map(e => `${e.role} (${e.area}): ${e.detail}`).join('\n');
   
@@ -23,10 +24,12 @@ export const runAIAnalysis = async (type: AnalysisType | string, orgData: Employ
   - Mantén el tono "Executive Gold Standard".`;
 
   try {
+    // Fix: Using 'gemini-3-pro-preview' for complex strategic reasoning and organizational analysis
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-3-pro-preview',
       contents: prompt,
     });
+    // Fix: Accessing .text as a property, not a method, as per SDK documentation
     return response.text || "No se pudo generar el análisis en este momento.";
   } catch (error) {
     console.error("Gemini Error:", error);
